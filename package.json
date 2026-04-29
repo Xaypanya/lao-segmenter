@@ -1,0 +1,38 @@
+{
+  "name": "lao-segmenter",
+  "version": "0.1.0",
+  "description": "Lao word segmenter using maximal matching with a 34k-word dictionary — works in Node.js and browsers",
+  "keywords": ["lao", "nlp", "tokenizer", "segmenter", "word-segmentation", "southeast-asia"],
+  "license": "MIT",
+  "author": "Xaypanya Phongsa <xaypanya.ps@gmail.com>",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "data"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "dev": "vitest",
+    "rebuild-dict": "node scripts/build-dict.mjs"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}
