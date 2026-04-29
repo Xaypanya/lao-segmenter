@@ -1,6 +1,6 @@
 {
   "name": "lao-segmenter",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Lao word segmenter using maximal matching with a 34k-word dictionary — works in Node.js and browsers",
   "keywords": [
     "lao",
