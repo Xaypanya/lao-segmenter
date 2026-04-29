@@ -5,6 +5,14 @@
   "keywords": ["lao", "nlp", "tokenizer", "segmenter", "word-segmentation", "southeast-asia"],
   "license": "MIT",
   "author": "Xaypanya Phongsa <xaypanya.ps@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Xaypanya/lao-segmenter.git"
+  },
+  "homepage": "https://github.com/Xaypanya/lao-segmenter#readme",
+  "bugs": {
+    "url": "https://github.com/Xaypanya/lao-segmenter/issues"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",

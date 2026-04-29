@@ -196,6 +196,6 @@ This downloads the latest word lists and regenerates `data/lao-words.txt`.
 
 ## License
 
-MIT © [Xaypanya Phongsa](mailto:xaypanya.ps@gmail.com)
+MIT © [Xaypanya Phongsa](https://github.com/Xaypanya)
 
 The bundled dictionary files have separate licenses — see [Dictionary sources](#dictionary-sources) above.
