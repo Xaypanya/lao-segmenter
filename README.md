@@ -1,5 +1,7 @@
 # lao-segmenter
 
+![lao-segmenter banner](./banner.png)
+
 A Lao word segmenter for Node.js and the browser. It splits unsegmented Lao text into words using a dictionary of **34,000 Lao words** and a maximal matching algorithm — the same technique used by [PyThaiNLP](https://github.com/PyThaiNLP/pythainlp) for Thai text.
 
 ```js

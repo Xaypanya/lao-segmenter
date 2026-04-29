@@ -30,7 +30,8 @@
   },
   "files": [
     "dist",
-    "data"
+    "data",
+    "banner.png"
   ],
   "scripts": {
     "build": "tsup",
