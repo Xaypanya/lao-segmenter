@@ -74,26 +74,28 @@ jobs:
 
       # No NODE_AUTH_TOKEN: npm mints a short-lived OIDC credential instead and
       # attaches a provenance attestation automatically.
-      - name: Diagnose the OIDC environment
-        run: |
-          echo "npm version:  $(npm -v)"
-          echo "registry:     $(npm config get registry)"
-          echo "OIDC request URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}${ACTIONS_ID_TOKEN_REQUEST_URL:-no}"
-          echo "--- ~/.npmrc ---"; cat ~/.npmrc 2>/dev/null || echo "(none)"
-          echo "--- ./.npmrc ---"; cat .npmrc 2>/dev/null || echo "(none)"
-
+      # Skips cleanly when the version is already up, so a manual re-run can
+      # still reach the steps below.
       - name: Publish to npmjs.com (Trusted Publishing)
-        run: npm publish --access public
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "lao-segmenter@${VERSION}" version >/dev/null 2>&1; then
+            echo "lao-segmenter@${VERSION} is already on npmjs.com, skipping"
+          else
+            npm publish --access public
+          fi
 
       # Also publish to GitHub Packages so the repo's Packages panel links here.
       # GitHub Packages requires a scoped name, so it is renamed just for this
       # publish and reverted straight after. Auth is written only now, so it
-      # cannot interfere with the OIDC exchange above.
+      # cannot interfere with the OIDC exchange above, and --ignore-scripts
+      # keeps prepublishOnly from re-running the suite against the renamed
+      # package (test:pkg imports 'lao-segmenter' and would fail).
       - name: Publish to GitHub Packages
         run: |
           echo "//npm.pkg.github.com/:_authToken=${GH_PACKAGES_TOKEN}" >> ~/.npmrc
           npm pkg set name=@xaypanya/lao-segmenter
-          npm publish --registry=https://npm.pkg.github.com --access public || true
+          npm publish --registry=https://npm.pkg.github.com --access public --ignore-scripts || true
           git checkout -- package.json
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
