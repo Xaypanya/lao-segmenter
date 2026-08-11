@@ -56,6 +56,32 @@ export class Trie {
     }
     return lastMatch
   }
+
+  /**
+   * Returns the lengths of *every* word in the trie that is a prefix of `text`
+   * starting at `pos`, in ascending order. Empty when nothing matches.
+   *
+   * The segmenter needs all candidates, not just the longest one: picking the
+   * longest match greedily can strand the rest of the syllable. For example
+   * "ຊິນອນ" greedily yields ຊິນ + ອ + ນ, while the shorter first match gives
+   * the better ຊິ + ນອນ.
+   *
+   * Pass `limit` to stop scanning after that many characters.
+   */
+  allMatches(text: string, pos: number, limit = text.length): number[] {
+    const matches: number[] = []
+    const end = Math.min(text.length, pos + limit)
+    let node = this.root
+    let i = pos
+    while (i < end) {
+      const next = node.children.get(text[i])
+      if (!next) break
+      node = next
+      i++
+      if (node.isEnd) matches.push(i - pos)
+    }
+    return matches
+  }
 }
 
 export function buildTrie(words: Iterable<string>): Trie {

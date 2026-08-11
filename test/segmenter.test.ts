@@ -1796,7 +1796,9 @@ describe('O: final completeness cases', () => {
     expect(segment("ຈ່ອຍໆ").join('')).toBe("ຈ່ອຍໆ")
   })
   it("ທ່ານດີບໍ", () => {
-    expect(segment("ທ່ານດີບໍ")).toEqual(["ທ່ານ","ດີບ","ໍ"])
+    // ທ່ານ ດີ ບໍ — "are you well?". Greedy matching used to take ດີບ here and
+    // strand the vowel sign; the shortest-path segmenter keeps ບໍ intact.
+    expect(segment("ທ່ານດີບໍ")).toEqual(["ທ່ານ","ດີ","ບໍ"])
     expect(segment("ທ່ານດີບໍ").join('')).toBe("ທ່ານດີບໍ")
   })
   it("ຂ້ອຍດີ", () => {

@@ -1,7 +1,7 @@
 {
   "name": "lao-segmenter",
-  "version": "0.2.0",
-  "description": "Lao word segmenter using maximal matching with a 35k-word dictionary — zero dependencies, works in Node.js, browsers, Deno, Bun, edge runtimes and every bundler (Vite, webpack, Next.js, Nuxt, SvelteKit, Astro)",
+  "version": "0.3.0",
+  "description": "Lao word segmenter — shortest-path maximal matching over a 35k-word dictionary. Zero dependencies, works in Node.js, browsers, Deno, Bun, edge runtimes and every bundler (Vite, webpack, Next.js, Nuxt, SvelteKit, Astro)",
   "keywords": [
     "lao",
     "laos",

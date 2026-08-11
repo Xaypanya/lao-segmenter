@@ -127,27 +127,17 @@ export function segmentWith(
     }
 
     // ── Lao script ───────────────────────────────────────────────────────
-    if (isLaoCodePoint(cp)) {
-      const matchLen = trie.longestMatch(text, pos)
-      let token: string
-
-      if (matchLen > 0) {
-        token = text.slice(pos, pos + matchLen)
-        pos += matchLen
-      } else {
-        // Unknown: advance one Lao Grapheme Cluster so we never stall
-        const lgcLen = nextLGCLength(text, pos)
-        token = text.slice(pos, pos + lgcLen)
-        pos += lgcLen
+    if (isLaoCodePoint(cp) && !isLaoDigit(cp)) {
+      // Take the whole run of Lao letters and segment it as one unit, so the
+      // algorithm can look past a locally-longest match (see segmentLaoRun).
+      let end = pos + 1
+      while (end < text.length) {
+        const c = text.codePointAt(end)!
+        if (!isLaoCodePoint(c) || isLaoDigit(c)) break
+        end++
       }
-
-      // Absorb a trailing repetition mark ໆ (it belongs to this word)
-      if (pos < text.length && text.codePointAt(pos) === LAO_REPETITION) {
-        token += text[pos]
-        pos++
-      }
-
-      tokens.push(token)
+      segmentLaoRun(text, pos, end, trie, tokens)
+      pos = end
       continue
     }
 
@@ -158,6 +148,112 @@ export function segmentWith(
   }
 
   return tokens
+}
+
+// ─── Lao run segmentation (shortest path over the dictionary DAG) ─────────────
+
+/**
+ * Segment one maximal run of Lao letters and append the tokens to `out`.
+ *
+ * Plain greedy longest-match fails whenever the longest word at a position
+ * strands the characters after it. "ຊິນອນ" is the classic case: ຊິນ, ອ and ນ
+ * are all dictionary entries, so greedy produces ຊິນ + ອ + ນ — three tokens —
+ * while ຊິ + ນອນ ("will" + "sleep") is both shorter and correct.
+ *
+ * So instead of committing to the first longest match, we treat the run as a
+ * DAG: every dictionary word starting at a position is an edge, plus one Lao
+ * Grapheme Cluster edge as a fallback so unknown text can never stall us. A
+ * linear-time dynamic program then picks the best path, ranked by:
+ *
+ *   1. fewest unknown (non-dictionary) tokens — stay inside the dictionary
+ *   2. fewest tokens overall               — prefer whole words to fragments
+ *   3. longest final token                 — matches greedy on genuine ties
+ *
+ * This is the same "maximal matching over a word DAG" that PyThaiNLP's newmm
+ * uses for Thai, and it runs in O(n × longest-word) for a run of n characters.
+ */
+function segmentLaoRun(
+  text: string,
+  start: number,
+  end: number,
+  trie: Trie,
+  out: string[]
+): void {
+  const n = end - start
+  if (n <= 0) return
+
+  const INF = Infinity
+  // Cost of the best known path reaching each position, and where it came from.
+  const unknownCost = new Float64Array(n + 1).fill(INF)
+  const tokenCount = new Float64Array(n + 1).fill(INF)
+  const prev = new Int32Array(n + 1).fill(-1)
+  unknownCost[0] = 0
+  tokenCount[0] = 0
+
+  const relax = (to: number, from: number, unknown: number, count: number): void => {
+    const better =
+      unknown < unknownCost[to] ||
+      (unknown === unknownCost[to] &&
+        (count < tokenCount[to] ||
+          // Tie on both costs: fall back to greedy-from-the-left by preferring
+          // the edge that starts latest, which leaves the earlier tokens as
+          // long as possible. "ຫົວໃຈດີ" → ຫົວໃຈ + ດີ rather than ຫົວ + ໃຈດີ.
+          (count === tokenCount[to] && from > prev[to])))
+    if (better) {
+      unknownCost[to] = unknown
+      tokenCount[to] = count
+      prev[to] = from
+    }
+  }
+
+  for (let i = 0; i < n; i++) {
+    if (unknownCost[i] === INF) continue
+    const abs = start + i
+    const unknown = unknownCost[i]
+    const count = tokenCount[i]
+
+    // Dictionary edges — every word starting here, not just the longest.
+    const matches = trie.allMatches(text, abs, n - i)
+    for (let m = 0; m < matches.length; m++) {
+      relax(i + matches[m], i, unknown, count + 1)
+    }
+
+    // Fallback edge: one Lao Grapheme Cluster, so we always make progress.
+    // The repetition mark ໆ is not really an unknown word — it is glued onto
+    // the previous token below — so it does not carry the unknown penalty.
+    let lgcLen = nextLGCLength(text, abs)
+    if (lgcLen <= 0) lgcLen = 1
+    if (i + lgcLen > n) lgcLen = n - i
+    const isRepetition = text.codePointAt(abs) === LAO_REPETITION
+    relax(i + lgcLen, i, unknown + (isRepetition ? 0 : 1), count + 1)
+  }
+
+  // Walk the parent pointers back from the end of the run.
+  const boundaries: number[] = []
+  for (let i = n; i > 0; i = prev[i]) {
+    boundaries.push(i)
+    /* istanbul ignore next — every position is reachable via the LGC fallback */
+    if (prev[i] < 0) break
+  }
+  boundaries.push(0)
+  boundaries.reverse()
+
+  const runTokens: string[] = []
+  for (let b = 1; b < boundaries.length; b++) {
+    runTokens.push(text.slice(start + boundaries[b - 1], start + boundaries[b]))
+  }
+
+  // A repetition mark ໆ always belongs to the word in front of it.
+  for (let k = 1; k < runTokens.length; k++) {
+    while (runTokens[k].length > 0 && runTokens[k].codePointAt(0) === LAO_REPETITION) {
+      runTokens[k - 1] += runTokens[k][0]
+      runTokens[k] = runTokens[k].slice(1)
+    }
+  }
+
+  for (const token of runTokens) {
+    if (token.length > 0) out.push(token)
+  }
 }
 
 // ─── Stateful Segmenter class ─────────────────────────────────────────────────

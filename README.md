@@ -357,11 +357,24 @@ The word list is stored [front-coded](./scripts/generate-dict-module.mjs) (each 
 ## How it works
 
 1. **Trie lookup** — the 35,000-word dictionary is loaded into a prefix tree (trie) for fast lookups.
-2. **Maximal matching** — at each position, the algorithm finds the longest word that matches the dictionary.
-3. **LGC fallback** — if no dictionary match is found, the segmenter advances one Lao Grapheme Cluster so it never gets stuck on unknown words.
+2. **Word graph** — inside each run of Lao letters, every dictionary word that starts at every position becomes an edge in a graph, plus one Lao Grapheme Cluster edge as a fallback so unknown text can never stall the scan.
+3. **Shortest path** — a linear-time dynamic program picks the best path through that graph: fewest unknown fragments first, then fewest tokens, then longest words from the left.
 4. **ໆ absorption** — the Lao repetition mark ໆ is always merged with the word before it (e.g. `ຕ່າງໆ` stays as one token).
 
 This is the same algorithm family as PyThaiNLP's `newmm` tokenizer, adapted for Lao Unicode.
+
+Looking at the whole run instead of taking the longest match at each step is what makes the difference on real sentences:
+
+```js
+segment('ຊິນອນ')
+// → ['ຊິ', 'ນອນ']     "will" + "sleep"
+// greedy longest-match gives ['ຊິນ', 'ອ', 'ນ'] — ຊິນ, ອ and ນ are all
+// dictionary entries, but they leave ອນ stranded, so it splits into three.
+
+segment('ທ່ານດີບໍ')
+// → ['ທ່ານ', 'ດີ', 'ບໍ']   "are you well?"
+// greedy gives ['ທ່ານ', 'ດີບ', 'ໍ'], breaking the vowel sign off ບໍ.
+```
 
 ---
 
@@ -408,7 +421,7 @@ const tokens: string[] = segment('ຂ້ອຍຮຽນ', options)
 ```bash
 npm install
 npm run build        # regenerates the dictionary module, then bundles
-npm test             # 543 unit tests
+npm test             # 558 unit tests
 npm run test:pkg     # packs the tarball and loads it as a real consumer would
 npm run typecheck
 ```

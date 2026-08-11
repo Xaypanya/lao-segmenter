@@ -3,6 +3,33 @@
 All notable changes to this project are documented here.
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-08-11
+
+### Fixed
+
+- **Segmentation no longer strands characters after a long match.** The segmenter used pure greedy longest-matching: it took the longest dictionary word at each position and never reconsidered. When that longest word left an unmatchable remainder, the leftovers were shredded into single clusters.
+
+  `ຊິນອນ` ("will sleep") is the clearest case. `ຊິນ`, `ອ` and `ນ` are all dictionary entries, so greedy took `ຊິນ` and then had `ອນ` left over — not a word — producing `ຊິນ | ອ | ນ` instead of `ຊິ | ນອນ`. Likewise `ທ່ານດີບໍ` came out as `ທ່ານ | ດີບ | ໍ`, breaking the vowel sign off `ບໍ`.
+
+  Each run of Lao letters is now treated as a word graph — every dictionary word starting at every position is an edge, with a Lao Grapheme Cluster edge as the fallback — and a linear-time dynamic program picks the best path: fewest unknown fragments, then fewest tokens, then longest words from the left. This is what PyThaiNLP's `newmm` does for Thai, and what the README already claimed this package did.
+
+  ```js
+  segment('ຊິນອນ')             // was ['ຊິນ','ອ','ນ']       → now ['ຊິ','ນອນ']
+  segment('ທ່ານດີບໍ')          // was ['ທ່ານ','ດີບ','ໍ']    → now ['ທ່ານ','ດີ','ບໍ']
+  segment('ຢຸດຮ້ອງເພງດູຊິນອນ') // → ['ຢຸດ','ຮ້ອງເພງ','ດູ','ຊິ','ນອນ']
+  ```
+
+  Still O(n × longest-word) per run, still lossless, and the repetition mark ໆ still glues to the word before it.
+
+### Added
+
+- `Trie.allMatches(text, pos, limit?)` — every dictionary word that is a prefix at `pos`, not just the longest.
+- 15 regression tests for the shortest-path behaviour (558 total).
+
+### Note
+
+One pre-existing test expectation changed: `ທ່ານດີບໍ` was asserted as `['ທ່ານ','ດີບ','ໍ']`, which encoded the greedy bug. Every other one of the 519 original tests passes unchanged.
+
 ## [0.2.0] — 2026-08-11
 
 ### Fixed
