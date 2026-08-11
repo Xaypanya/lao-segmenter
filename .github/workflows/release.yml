@@ -31,6 +31,12 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Repeated at job level so the runner definitely injects the OIDC token
+    # request variables npm needs for Trusted Publishing.
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -68,6 +74,14 @@ jobs:
 
       # No NODE_AUTH_TOKEN: npm mints a short-lived OIDC credential instead and
       # attaches a provenance attestation automatically.
+      - name: Diagnose the OIDC environment
+        run: |
+          echo "npm version:  $(npm -v)"
+          echo "registry:     $(npm config get registry)"
+          echo "OIDC request URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}${ACTIONS_ID_TOKEN_REQUEST_URL:-no}"
+          echo "--- ~/.npmrc ---"; cat ~/.npmrc 2>/dev/null || echo "(none)"
+          echo "--- ./.npmrc ---"; cat .npmrc 2>/dev/null || echo "(none)"
+
       - name: Publish to npmjs.com (Trusted Publishing)
         run: npm publish --access public
 
