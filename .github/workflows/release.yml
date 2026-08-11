@@ -3,9 +3,20 @@ name: Release
 # Push a version tag to cut a release:
 #   npm version minor && git push --follow-tags
 #
-# Requires one repository secret: NPM_TOKEN — an npmjs.com automation token
-# with publish rights on `lao-segmenter`.
-# Settings → Secrets and variables → Actions → New repository secret.
+# Publishing uses npm Trusted Publishing (OIDC) — no token is stored anywhere.
+# One-time setup on npmjs.com:
+#   npmjs.com/package/lao-segmenter → Settings → Trusted Publisher
+#   → GitHub Actions
+#      Organization or user: Xaypanya
+#      Repository:           lao-segmenter
+#      Workflow filename:    release.yml
+#      Environment:          (leave blank)
+#
+# npm is also restricting 2FA-bypass tokens for direct publishing, so this is
+# the path that keeps working: https://gh.io/npm-gat-bypass2fa-deprecation
+#
+# If you would rather publish with a token, add an NPM_TOKEN repository secret
+# and this workflow will use it as a fallback.
 
 on:
   push:
@@ -15,7 +26,7 @@ on:
 permissions:
   contents: write
   packages: write
-  id-token: write
+  id-token: write # required for Trusted Publishing
 
 jobs:
   release:
@@ -27,9 +38,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://registry.npmjs.org
           cache: npm
+
+      # Trusted Publishing needs npm 11.5.1 or newer.
+      - run: npm install -g npm@latest
 
       - run: npm ci
       - run: npm run typecheck
@@ -39,6 +53,7 @@ jobs:
 
       # Fail early if the tag and package.json disagree.
       - name: Check tag matches package version
+        if: github.event_name == 'push'
         run: |
           TAG="${GITHUB_REF_NAME#v}"
           PKG=$(node -p "require('./package.json').version")
@@ -47,8 +62,15 @@ jobs:
             exit 1
           fi
 
-      - name: Publish to npmjs.com
-        run: npm publish --provenance --access public
+      # No NODE_AUTH_TOKEN: npm mints a short-lived OIDC credential instead and
+      # attaches a provenance attestation automatically.
+      - name: Publish to npmjs.com (Trusted Publishing)
+        if: ${{ secrets.NPM_TOKEN == '' }}
+        run: npm publish --access public
+
+      - name: Publish to npmjs.com (token)
+        if: ${{ secrets.NPM_TOKEN != '' }}
+        run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -63,15 +85,19 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create the GitHub release
+      - name: Create or update the GitHub release
+        if: github.event_name == 'push'
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
-            --latest \
-            --notes "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md) for the full list of changes.
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTES="See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md) for the full list of changes.
 
           \`\`\`bash
-          npm install lao-segmenter@${GITHUB_REF_NAME#v}
+          npm install lao-segmenter@${VERSION}
           \`\`\`"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --latest
+          else
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --latest --notes "$NOTES"
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
