@@ -31,6 +31,10 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # `secrets` cannot be referenced from a step-level `if`, so the check is
+    # hoisted to a job-level env var.
+    env:
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -65,11 +69,11 @@ jobs:
       # No NODE_AUTH_TOKEN: npm mints a short-lived OIDC credential instead and
       # attaches a provenance attestation automatically.
       - name: Publish to npmjs.com (Trusted Publishing)
-        if: ${{ secrets.NPM_TOKEN == '' }}
+        if: env.HAS_NPM_TOKEN == 'false'
         run: npm publish --access public
 
       - name: Publish to npmjs.com (token)
-        if: ${{ secrets.NPM_TOKEN != '' }}
+        if: env.HAS_NPM_TOKEN == 'true'
         run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
