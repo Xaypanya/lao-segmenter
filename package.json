@@ -1,50 +1,105 @@
 {
   "name": "lao-segmenter",
-  "version": "0.1.2",
-  "description": "Lao word segmenter using maximal matching with a 34k-word dictionary — works in Node.js and browsers",
+  "version": "0.2.0",
+  "description": "Lao word segmenter using maximal matching with a 35k-word dictionary — zero dependencies, works in Node.js, browsers, Deno, Bun, edge runtimes and every bundler (Vite, webpack, Next.js, Nuxt, SvelteKit, Astro)",
   "keywords": [
     "lao",
+    "laos",
     "nlp",
     "tokenizer",
     "segmenter",
     "word-segmentation",
-    "southeast-asia"
+    "text-segmentation",
+    "southeast-asia",
+    "isomorphic",
+    "browser",
+    "esm",
+    "typescript"
   ],
   "license": "MIT",
   "author": "Xaypanya Phongsa <xaypanya.ps@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Xaypanya/lao-segmenter.git"
+    "url": "git+https://github.com/Xaypanya/lao-segmenter.git"
   },
   "homepage": "https://github.com/Xaypanya/lao-segmenter#readme",
   "bugs": {
     "url": "https://github.com/Xaypanya/lao-segmenter/issues"
   },
+  "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "unpkg": "./dist/lao-segmenter.global.js",
+  "jsdelivr": "./dist/lao-segmenter.global.js",
   "exports": {
     ".": {
       "import": {
         "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
+        "default": "./dist/index.mjs"
       },
       "require": {
-        "types": "./dist/index.d.ts",
+        "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
-      }
+      },
+      "default": "./dist/index.mjs"
+    },
+    "./core": {
+      "import": {
+        "types": "./dist/core.d.ts",
+        "default": "./dist/core.mjs"
+      },
+      "require": {
+        "types": "./dist/core.d.cts",
+        "default": "./dist/core.cjs"
+      },
+      "default": "./dist/core.mjs"
+    },
+    "./dictionary": {
+      "import": {
+        "types": "./dist/dictionary.d.ts",
+        "default": "./dist/dictionary.mjs"
+      },
+      "require": {
+        "types": "./dist/dictionary.d.cts",
+        "default": "./dist/dictionary.cjs"
+      },
+      "default": "./dist/dictionary.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "core": [
+        "./dist/core.d.ts"
+      ],
+      "dictionary": [
+        "./dist/dictionary.d.ts"
+      ]
     }
   },
   "files": [
     "dist",
-    "data",
+    "!dist/**/*.map",
     "banner.png"
   ],
+  "engines": {
+    "node": ">=16"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
+    "generate:dict": "node scripts/generate-dict-module.mjs",
+    "prebuild": "npm run generate:dict",
     "build": "tsup",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:pkg": "node scripts/verify-package.mjs",
     "dev": "vitest",
-    "rebuild-dict": "node scripts/build-dict.mjs"
+    "rebuild-dict": "node scripts/build-dict.mjs",
+    "prepublishOnly": "npm run build && npm run test && npm run test:pkg"
   },
   "devDependencies": {
     "tsup": "^8.0.0",

@@ -1,0 +1,50 @@
+# Changelog
+
+All notable changes to this project are documented here.
+This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.2.0] — 2026-08-11
+
+### Fixed
+
+- **The package now works in every JavaScript framework and runtime.** Previously the dictionary was read from disk at runtime with `fs.readFileSync(join(__dirname, '..', 'data', 'lao-words.txt'))`. That works in plain Node.js, but breaks as soon as the package is processed by a bundler: `fs` does not exist in the browser, and `__dirname` no longer points at the published `dist/` directory. Anyone using Vite, webpack, Next.js, Nuxt, SvelteKit, Astro, a Web Worker, or an edge runtime hit either a build-time resolution error or a runtime `ENOENT`.
+
+  The dictionary is now compiled into the module as a string constant. There are **no Node.js built-in imports anywhere in the published output**, so the same `import { segment } from 'lao-segmenter'` works unchanged in Node, browsers, Bun, Deno, Cloudflare Workers, Vercel Edge and Deno Deploy — with no bundler configuration, no `fs` polyfill and no copying files into `public/`.
+
+  Verified by real production builds of Vite 5, webpack 5, Next.js 15 (Server Component + Client Component + edge route), Nuxt 3, SvelteKit 2 and Astro 4.
+
+### Added
+
+- **`lao-segmenter/core`** — the segmentation engine without the built-in dictionary (~3 KB minified). Use it when you want to ship your own word list.
+- **`lao-segmenter/dictionary`** — the word list on its own.
+- **Browser global build** — `dist/lao-segmenter.global.js`, exposed via unpkg and jsDelivr, for `<script src>` usage with no build step.
+- **`Segmenter` improvements** — `words` option (replace the dictionary entirely), `keepWhitespace` as a constructor default, `.has(word)`, `.addWords(words)` and a public `.trie` property.
+- **`segmentWith(text, trie, options?)`** — the dictionary-free core segmentation function.
+- **`getLaoWords()`**, **`DICTIONARY_SIZE`**, **`decodeWordList()`** exports.
+- **Dual TypeScript declarations** (`.d.ts` + `.d.cts`) so types resolve under both `moduleResolution: "bundler"` and `"node16"`.
+- **`npm run test:pkg`** — packs the tarball, installs it into a scratch directory, then exercises ESM, CJS, subpath imports, browser/edge bundling, the IIFE global and TypeScript resolution. This is what keeps the framework-support promise honest.
+- 15 new unit tests covering the new entry points (543 total).
+
+### Changed
+
+- Package is now `"type": "module"` with explicit `.mjs` / `.cjs` output extensions and `"sideEffects": false` for better tree-shaking.
+- Dictionary is stored front-coded (shared prefixes are elided), which nearly halves it: 260 KB → 168 KB of source characters, ~110 KB gzipped in a bundle.
+- The dictionary is decoded lazily on first use and cached, so importing the package costs nothing until you segment something.
+- `data/lao-words.txt` is no longer shipped in the npm tarball — it is compiled into `dist/`. It stays in the git repository as the source of truth, and `getRawDict()` still returns its contents.
+- Dictionary word count corrected in the docs: 35,185 (was reported as 34,000).
+
+### Compatibility
+
+No public API was removed. `segment()`, `Segmenter`, `splitLGC()`, `nextLGCLength()`, `isLaoCodePoint()`, `Trie`, `buildTrie()`, `parseWordList()`, `buildCustomTrie()`, `getRawDict()` and `getDefaultTrie()` all behave as before, and all 519 pre-existing tests pass unchanged.
+
+## [0.1.2]
+
+- Expanded the dictionary builder to support CSV/JSONL sources and filter out compound words.
+
+## [0.1.1]
+
+- Added repository, homepage and bugs metadata; added the banner image.
+
+## [0.1.0]
+
+- Initial release: maximal-matching Lao word segmenter with LGC fallback.
